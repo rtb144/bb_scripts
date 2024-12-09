@@ -1,3 +1,6 @@
+
+https://stackoverflow.com/questions/75672154/how-to-add-user-assigned-identity-in-azure-sql-using-azure-cli
+
 https://www.youtube.com/watch?v=YVMoLvMrC8E
 https://help.mulesoft.com/s/article/Troubleshooting-Mule-license-key-issues
 https://forums.raspberrypi.com/viewtopic.php?t=315172
