@@ -1,0 +1,11 @@
+[cdc] in server role [cdc_ro] has [DATABASE]:[~] permission [CONNECT].	NULL
+[cdc] in server role [db_owner] has [DATABASE]:[~] permission [CONNECT].	NULL
+[guest] in server role [Public] has [OBJECT_OR_COLUMN]:[fn_diagramobjects] permission [EXECUTE].	fn_diagramobjects
+[guest] in server role [Public] has [OBJECT_OR_COLUMN]:[sp_alterdiagram] permission [EXECUTE].	sp_alterdiagram
+[guest] in server role [Public] has [OBJECT_OR_COLUMN]:[sp_creatediagram] permission [EXECUTE].	sp_creatediagram
+[guest] in server role [Public] has [OBJECT_OR_COLUMN]:[sp_dropdiagram] permission [EXECUTE].	sp_dropdiagram
+[guest] in server role [Public] has [OBJECT_OR_COLUMN]:[sp_helpdiagramdefinition] permission [EXECUTE].	sp_helpdiagramdefinition
+[guest] in server role [Public] has [OBJECT_OR_COLUMN]:[sp_helpdiagrams] permission [EXECUTE].	sp_helpdiagrams
+[guest] in server role [Public] has [OBJECT_OR_COLUMN]:[sp_renamediagram] permission [EXECUTE].	sp_renamediagram
+[INFORMATION_SCHEMA] in server role [Public] has [server]:[~] permission [-].	NULL
+[sys] in server role [Public] has [server]:[~] permission [-].	NULL

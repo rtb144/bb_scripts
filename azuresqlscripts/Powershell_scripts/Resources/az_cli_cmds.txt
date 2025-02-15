@@ -1,0 +1,33 @@
+az sql server list | grep fullyQualifiedDomainName
+
+"fullyQualifiedDomainName": "caz-w0cuaa-dse-p-ai2c-sql.database.usgovcloudapi.net",
+    "fullyQualifiedDomainName": "caz-w0cuaa-dse-p-cmad-sql.database.usgovcloudapi.net",
+    "fullyQualifiedDomainName": "caz-w0cuaa-dse-p-fcc-sql.database.usgovcloudapi.net",
+    "fullyQualifiedDomainName": "caz-w0cuaa-dse-p-jmc-sql.database.usgovcloudapi.net",
+    "fullyQualifiedDomainName": "caz-w0cuaa-dse-p-mxcmd-sql.database.usgovcloudapi.net",
+    "fullyQualifiedDomainName": "caz-w0cuaa-dse-p-sql.database.usgovcloudapi.net",
+    "fullyQualifiedDomainName": "caz-w0cuaa-dse-p-sql-dsit.database.usgovcloudapi.net",
+    "fullyQualifiedDomainName": "caz-w0cuaa-dse-p-trac-sql.database.usgovcloudapi.net",
+    "fullyQualifiedDomainName": "caz-w0cuaa-dse-p-usaf-67cw-sql.database.usgovcloudapi.net",
+    "fullyQualifiedDomainName": "caz-w0cuaa-dse-p-usmc-sql.database.usgovcloudapi.net",
+
+    az sql server list | grep fullyQualifiedDomainName | cut -f2 -d':' | cut -f2 -d'"'
+
+
+caz-w0cuaa-dse-p-ai2c-sql
+caz-w0cuaa-dse-p-cmad-sql
+caz-w0cuaa-dse-p-fcc-sql
+caz-w0cuaa-dse-p-jmc-sql
+caz-w0cuaa-dse-p-mxcmd-sql
+caz-w0cuaa-dse-p-sql
+caz-w0cuaa-dse-p-sql-dsit
+caz-w0cuaa-dse-p-trac-sql
+caz-w0cuaa-dse-p-usaf-67cw-sql
+caz-w0cuaa-dse-p-usmc-sql
+
+//list all databases
+az sql db list --ids $(az sql server list --query [].id -o tsv) --query [.id] -o tsv
+
+sqlcmd -S MySqlDw.database.windows.net -d Adventure_Works -G -I
+sqlcmd -S caz-w0cuaa-dse-p-cmad-sql.database.usgovcloudapi.net -d caz-w0cuaa-dse-p-ai2c-sql-amap-demo -G -U russell.t.butler2.civ@cloud.army.mil -I
+

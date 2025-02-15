@@ -1,0 +1,1058 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Objects>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255301</Property>
+    <Property Name="RuleId" Type="System.String">SV-255301r960768_rule</Property>
+    <Property Name="Severity" Type="System.String">high</Property>
+    <Property Name="Code" Type="System.String">Get-AzSqlServerActiveDirectoryOnlyAuthentication  -ServerName $serverName -ResourceGroupName $resourceGroup</Property>
+    <Property Name="Method" Type="System.Int32">0</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255302</Property>
+    <Property Name="RuleId" Type="System.String">SV-255302r960792_rule</Property>
+    <Property Name="Severity" Type="System.String">high</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT [Finding] = 'Database '   
+	+ QUOTENAME(DB_NAME()) + ' '       
+	+ CASE WHEN dbp.type = 'r' THEN 'Role ' ELSE 'User ' END      
+	+ QUOTENAME(dbp.name)      
+	+ CASE WHEN dbp.type = 'r' THEN ' owning schema ' ELSE ' in db role ' END 
+	+ QUOTENAME(ISNULL(dbp2.name,'-')) + ' has db permission ' + QUOTENAME(ISNULL(dbper.permission_name,'-'))       --
+	+ ' on object ' + QUOTENAME(ISNULL(OBJECT_NAME(dbper.major_id),'-'))    
+	+ ' on object ' + QUOTENAME(ISNULL(CASE WHEN dbper.major_id = 0 THEN 'Database' ELSE OBJECT_NAME(dbper.major_id) END,'-'))       
+	+ '.' COLLATE SQL_Latin1_General_CP1_CI_AS  
+FROM sys.database_principals dbp LEFT JOIN sys.database_role_members dbrm 
+	ON dbp.principal_Id = dbrm.member_principal_Id LEFT JOIN sys.database_principals dbp2 
+	ON dbrm.role_principal_id = dbp2.principal_id LEFT JOIN sys.database_permissions dbper 
+	ON dbper.grantee_principal_id = dbp.principal_id  
+WHERE dbp.type IN ('u','s','g','r') /*Windows/Sql/Groups */
+	AND NOT (dbp.name = 'public' AND dbper.permission_name IN ('select','execute') 
+	AND  DB_NAME() = 'master') /*ignore public permissions in master*/
+	AND NOT (dbp.name = 'public' AND dbper.permission_name IN ('select','execute') 
+	AND OBJECT_SCHEMA_NAME(major_id, DB_ID()) = 'sys')      AND ( /*Filter out duplicate permissions in each database except for the base master database*/
+	dbp2.name IS NOT NULL /* This seems to filter out permissions granted to a role.*/
+	AND dbper.permission_name IS NOT NULL 
+	AND dbper.major_id IS NOT NULL          
+	OR DB_NAME() = 'master')</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255303</Property>
+    <Property Name="RuleId" Type="System.String">SV-255303r960792_rule</Property>
+    <Property Name="Severity" Type="System.String">high</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT QUOTENAME(sp.name) + ' in server role '
+    + QUOTENAME(ISNULL(sp2.name,'Public')) + ' has '
+    + QUOTENAME(ISNULL(class_desc,'server'))+ ':'
++ QUOTENAME(ISNULL(object_name(major_id),'~')) + ' permission '
+    + QUOTENAME(ISNULL(srvper.permission_name,'-'))
+    + '.' COLLATE SQL_Latin1_General_CP1_CI_AS Finding
+, object_name(major_id) ObjectName
+FROM sys.database_principals sp
+LEFT JOIN sys.database_role_members srm ON sp.principal_id = srm.member_principal_id
+LEFT JOIN sys.database_principals sp2 ON srm.role_principal_id = sp2.principal_id
+LEFT JOIN sys.database_permissions srvper ON srvper.grantee_principal_id = sp.principal_id
+WHERE sp.type IN ('u','s','g') --Windows/Sql/Groups
+AND sp.principal_id &lt;&gt; 1</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255304</Property>
+    <Property Name="RuleId" Type="System.String">SV-255304r960864_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">Obtain the list of authorized Azure SQL Database accounts in the system documentation. 
+
+Determine if any accounts are shared. A shared account is defined as a username and password that are used by multiple individuals to log in to Azure SQL Database. Azure Active Directory accounts are not shared accounts as the group itself does not have a password. 
+
+If accounts are determined to be shared, determine if individuals are first individually authenticated. 
+
+If individuals are not individually authenticated before using the shared account (e.g., by the operating system or possibly by an application making calls to the database), this is a finding. 
+
+The key is individual accountability. If this can be traced, this is not a finding. 
+
+If accounts are determined to be shared, determine if they are directly accessible to end users. If so, this is a finding. 
+
+Review contents of audit logs and data tables to confirm that the identity of the individual user performing the action is captured. 
+
+If shared identifiers are found and not accompanied by individual identifiers, this is a finding.</Property>
+    <Property Name="Method" Type="System.Int32">2</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255305</Property>
+    <Property Name="RuleId" Type="System.String">SV-255305r960864_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT SCHEMA_NAME(T.schema_id) AS schema_name, T.name AS table_name, T.temporal_type_desc, SCHEMA_NAME(H.schema_id) + '.' + H.name AS history_table
+FROM sys.tables T
+JOIN sys.tables H ON T.history_table_id = H.object_id
+WHERE T.temporal_type != 0
+ORDER BY schema_name, table_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255306</Property>
+    <Property Name="RuleId" Type="System.String">SV-255306r960960_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">;with objects_cte as
+(SELECT o.name, o.type_desc,
+CASE
+WHEN o.principal_id is null then s.principal_id
+ELSE o.principal_id
+END as principal_id
+FROM sys.objects o
+INNER JOIN sys.schemas s
+ON o.schema_id = s.schema_id
+WHERE o.is_ms_shipped = 0
+)
+SELECT cte.name, cte.type_desc, dp.name as ObjectOwner 
+FROM objects_cte cte
+INNER JOIN sys.database_principals dp
+ON cte.principal_id = dp.principal_id
+ORDER BY dp.name, cte.name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255307</Property>
+    <Property Name="RuleId" Type="System.String">SV-255307r960960_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT P.type_desc AS principal_type, P.name AS principal_name, O.type_desc,
+CASE class
+WHEN 0 THEN DB_NAME()
+WHEN 1 THEN OBJECT_SCHEMA_NAME(major_id) + '.' + OBJECT_NAME(major_id)
+WHEN 3 THEN SCHEMA_NAME(major_id)
+ELSE class_desc + '(' + CAST(major_id AS nvarchar) + ')'
+END AS securable_name, DP.state_desc, DP.permission_name
+FROM sys.database_permissions DP
+JOIN sys.database_principals P ON DP.grantee_principal_id = P.principal_id
+LEFT OUTER JOIN sys.all_objects O ON O.object_id = DP.major_id AND O.type IN ('TR','TA','P','X','RF','PC','IF','FN','TF','U')
+WHERE DP.type IN ('AL','ALTG') AND DP.class IN (0, 1, 53)
+
+SELECT R.name AS role_name, M.type_desc AS principal_type, M.name AS principal_name
+FROM sys.database_principals R
+JOIN sys.database_role_members DRM ON R.principal_id = DRM.role_principal_id
+JOIN sys.database_principals M ON DRM.member_principal_id = M.principal_id
+WHERE R.name IN ('db_ddladmin','db_owner')
+AND M.name != 'dbo'</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255308</Property>
+    <Property Name="RuleId" Type="System.String">SV-255308r961131_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">Determine elements of security functionality (lists of permissions, additional authentication information, stored procedures, application specific auditing, etc.) being housed inside Azure SQL Database.
+
+For any elements found, check Azure SQL Database to determine if these objects or code implementing security functionality are located in a separate security domain, such as a separate database, schema, or table created specifically for security functionality.
+
+Review the database structure to determine where security related functionality is stored. If security-related database objects or code are not kept separate, this is a finding.</Property>
+    <Property Name="Method" Type="System.Int32">-1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255309</Property>
+    <Property Name="RuleId" Type="System.String">SV-255309r961149_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">Review the procedures for the refreshing of development/test data from production.
+
+Review any scripts or code that exists for the movement of production data to development/test systems, or to any other location or for any other purpose. Verify that copies of production data are not left in unprotected locations.
+
+If the code that exists for data movement does not comply with the organization-defined data transfer policy and/or fails to remove any copies of production data from unprotected locations, this is a finding.</Property>
+    <Property Name="Method" Type="System.Int32">-1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255310</Property>
+    <Property Name="RuleId" Type="System.String">SV-255310r961158_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">Review Azure SQL Database code (stored procedures, functions, triggers), application code, settings, column and field definitions, and constraints to determine whether the database is protected against invalid input. 
+
+If code exists that allows invalid data to be acted upon or input into the database, this is a finding. 
+
+If column/field definitions are not reflective of the data, this is a finding. 
+
+If columns/fields do not contain constraints and validity checking where required, this is a finding. 
+
+Where a column/field is noted in the system documentation as necessarily free-form, even though its name and context suggest that it should be strongly typed and constrained, the absence of these protections is not a finding. 
+
+Where a column/field is clearly identified by name, caption or context as Notes, Comments, Description, Text, etc., the absence of these protections is not a finding.</Property>
+    <Property Name="Method" Type="System.Int32">-1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255311</Property>
+    <Property Name="RuleId" Type="System.String">SV-255311r961158_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">DECLARE @tblDynamicQuery TABLE (ID INT identity(1,1), ProcToExecuteDynSQL VARCHAR(500))
+INSERT INTO @tblDynamicQuery(ProcToExecuteDynSQL) values('EXEC[ (]@')
+INSERT INTO @tblDynamicQuery(ProcToExecuteDynSQL) values('EXECUTE[ (]@')
+INSERT INTO @tblDynamicQuery(ProcToExecuteDynSQL) values('SP_EXECUTESQL[ (]@')
+
+SELECT 
+   QUOTENAME(DB_Name()) DB_Name,
+   QUOTENAME(SCHEMA_NAME([schema_id])) + '.' + QUOTENAME(name) Name, QUOTENAME(type_desc)  ObjectType
+FROM sys.objects o
+WHERE o.is_ms_shipped = 0 and 
+o.object_id IN (
+   SELECT m.object_id
+   FROM sys.sql_modules m 
+   JOIN @tblDynamicQuery dsql ON REPLACE(REPLACE(REPLACE(m.definition,CHAR(32),'()'),')(',''),'()',CHAR(32)) like '%' + dsql.ProcToExecuteDynSQL + '%')</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255312</Property>
+    <Property Name="RuleId" Type="System.String">SV-255312r961158_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">DECLARE @tblDynamicQuery TABLE (ID INT identity(1,1), ProcToExecuteDynSQL VARCHAR(500))
+INSERT INTO @tblDynamicQuery(ProcToExecuteDynSQL) values('EXEC[ (]@')
+INSERT INTO @tblDynamicQuery(ProcToExecuteDynSQL) values('EXECUTE[ (]@')
+INSERT INTO @tblDynamicQuery(ProcToExecuteDynSQL) values('SP_EXECUTESQL[ (]@')
+
+SELECT 
+   QUOTENAME(DB_Name()) DB_Name,
+   QUOTENAME(SCHEMA_NAME([schema_id])) + '.' + QUOTENAME(name) Name, QUOTENAME(type_desc)  ObjectType
+FROM sys.objects o
+WHERE o.is_ms_shipped = 0 and 
+o.object_id IN (
+   SELECT m.object_id
+   FROM sys.sql_modules m 
+   JOIN @tblDynamicQuery dsql ON REPLACE(REPLACE(REPLACE(m.definition,CHAR(32),'()'),')(',''),'()',CHAR(32)) like '%' + dsql.ProcToExecuteDynSQL + '%')</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255313</Property>
+    <Property Name="RuleId" Type="System.String">SV-255313r961269_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">If security labeling is not required, this is not a finding.
+
+If security labeling requirements have been specified, but a third-party solution, SQL Information Protection, or an Azure SQL Database Row-Level security solution is implemented that reliably maintains labels on information in storage, this is a finding.</Property>
+    <Property Name="Method" Type="System.Int32">2</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255314</Property>
+    <Property Name="RuleId" Type="System.String">SV-255314r961272_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">If security labeling is not required, this is not a finding.
+
+If security labeling requirements have been specified, but a third-party solution, SQL Information Protection, or an Azure SQL Database Row-Level security solution is implemented that reliably maintains labels on information in process, this is a finding.</Property>
+    <Property Name="Method" Type="System.Int32">2</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255315</Property>
+    <Property Name="RuleId" Type="System.String">SV-255315r961275_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">If security labeling is not required, this is not a finding.
+
+If security labeling requirements have been specified, but a third-party solution, SQL Information Protection, or an Azure SQL Database Row-Level security solution is implemented that reliably maintains labels on information in transmission, this is a finding.</Property>
+    <Property Name="Method" Type="System.Int32">2</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255316</Property>
+    <Property Name="RuleId" Type="System.String">SV-255316r961317_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT object_id, 
+SCHEMA_NAME(schema_id) AS SchemaName,
+[name] AS Securable,
+USER_NAME(principal_id) AS ObjectOwner,
+[type_desc] AS ObjectType
+FROM sys.objects
+WHERE is_ms_shipped = 0 AND principal_id IS NOT NULL
+ORDER BY ObjectType, Securable, ObjectOwner
+
+DECLARE @ObjectName nvarchar(512)
+SET @ObjectName = '' --Specify object name here
+SELECT object_id, 
+SCHEMA_NAME(schema_id) AS SchemaName,
+[name] AS Securable,
+USER_NAME(principal_id) AS ObjectOwner,
+[type_desc] AS ObjectType
+FROM sys.objects
+WHERE is_ms_shipped = 0 AND principal_id IS NOT NULL
+AND [name] = @ObjectName
+ORDER BY ObjectType, Securable, ObjectOwner
+
+DECLARE @SchemaName nvarchar(512)
+SET @SchemaName = '' --Specify schema name here
+SELECT object_id, 
+SCHEMA_NAME(schema_id) AS SchemaName,
+[name] AS Securable,
+USER_NAME(principal_id) AS ObjectOwner,
+[type_desc] AS ObjectType
+FROM sys.objects
+WHERE is_ms_shipped = 0 AND principal_id IS NOT NULL
+AND SCHEMA_NAME(schema_id) = @SchemaName
+ORDER BY ObjectType, Securable, ObjectOwner
+
+SELECT [name] AS [SchemaName], USER_NAME(principal_id) AS [SchemaOwner]
+FROM sys.schemas
+WHERE schema_id != principal_id --exclude schemas owned by the schema
+AND principal_id != 1 --exclude schema dbo
+
+SELECT U.type_desc AS [PrincipalType],
+ U.name AS [Grantee],
+DP.class_desc AS [SecurableType],
+CASE DP.class
+    WHEN 0 THEN DB_NAME()
+    WHEN 1 THEN OBJECT_NAME(DP.major_id)
+    WHEN 3 THEN SCHEMA_NAME(DP.major_id)
+ELSE CAST(DP.major_id AS nvarchar)
+    END AS [Securable],
+permission_name AS [PermissionName],
+state_desc AS [DelegatedRight]
+FROM sys.database_permissions DP
+JOIN sys.database_principals U ON DP.grantee_principal_id = U.principal_id
+WHERE DP.state = 'W'
+ORDER BY Grantee, SecurableType, Securable</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255317</Property>
+    <Property Name="RuleId" Type="System.String">SV-255317r961359_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT S.name AS schema_name, O.name AS module_name,
+USER_NAME(CASE M.execute_as_principal_id 
+               WHEN -2 THEN COALESCE(O.principal_id, S.principal_id)
+               ELSE M.execute_as_principal_id
+          END) AS execute_as
+FROM sys.sql_modules M
+    JOIN sys.objects O ON M.object_id = O.object_id
+    JOIN sys.schemas S ON O.schema_id = S.schema_id
+WHERE execute_as_principal_id IS NOT NULL
+ORDER BY schema_name, module_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255318</Property>
+    <Property Name="RuleId" Type="System.String">SV-255318r1018606_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT P.type_desc AS principal_type, P.name AS principal_name, O.type_desc,
+CASE class
+WHEN 0 THEN DB_NAME()
+WHEN 1 THEN OBJECT_SCHEMA_NAME(major_id) + '.' + OBJECT_NAME(major_id)
+WHEN 3 THEN SCHEMA_NAME(major_id)
+ELSE class_desc + '(' + CAST(major_id AS nvarchar) + ')'
+END AS securable_name, DP.state_desc, DP.permission_name
+FROM sys.database_permissions DP
+JOIN sys.database_principals P ON DP.grantee_principal_id = P.principal_id
+LEFT OUTER JOIN sys.all_objects O ON O.object_id = DP.major_id AND O.type IN ('TR','TA','P','X','RF','PC','IF','FN','TF','U')
+WHERE DP.type IN ('AL','ALTG') AND DP.class IN (0, 1, 53)
+
+SELECT R.name AS role_name, M.type_desc AS principal_type, M.name AS principal_name
+FROM sys.database_principals R
+JOIN sys.database_role_members DRM ON R.principal_id = DRM.role_principal_id
+JOIN sys.database_principals M ON DRM.member_principal_id = M.principal_id
+WHERE R.name IN ('db_ddladmin','db_owner')
+AND M.name != 'dbo'</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255319</Property>
+    <Property Name="RuleId" Type="System.String">SV-255319r961461_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT P.type_desc AS principal_type, P.name AS principal_name,
+O.type_desc,
+CASE class
+WHEN 0 THEN DB_NAME()
+WHEN 1 THEN OBJECT_SCHEMA_NAME(major_id) + '.' + OBJECT_NAME(major_id)
+WHEN 3 THEN SCHEMA_NAME(major_id)
+ELSE class_desc + '(' + CAST(major_id AS nvarchar) + ')'
+END AS securable_name, DP.state_desc, DP.permission_name
+FROM sys.database_permissions DP
+JOIN sys.database_principals P ON DP.grantee_principal_id = P.principal_id
+LEFT OUTER JOIN sys.all_objects O ON O.object_id = DP.major_id AND O.type IN ('TR','TA','P','X','RF','PC','IF','FN','TF','U')
+WHERE DP.type IN ('AL','ALTG') AND DP.class IN (0, 1, 53)
+
+SELECT R.name AS role_name, M.type_desc AS principal_type, M.name AS principal_name
+FROM sys.database_principals R
+JOIN sys.database_role_members DRM ON R.principal_id = DRM.role_principal_id
+JOIN sys.database_principals M ON DRM.member_principal_id = M.principal_id
+AND M.name != 'dbo'</Property>
+	<Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255319</Property>
+    <Property Name="RuleId" Type="System.String">SV-255319r961461_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">#$AzureSqlDbName = '&lt;Azure SQL Database Name&gt;'
+$AzureSqlDbResourceID = Get-AzResource -Name $AzureSqlDbName
+Get-AzRoleAssignment -Scope $AzureSqlDbResourceID.ResourceId -IncludeClassicAdministrators | Format-Table DisplayName,RoleDefinitionName </Property>
+    <Property Name="Method" Type="System.Int32">0</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255320</Property>
+    <Property Name="RuleId" Type="System.String">SV-255320r962034_rule</Property>
+    <Property Name="Severity" Type="System.String">high</Property>
+    <Property Name="Code" Type="System.String">SELECT DB_NAME(database_id) AS DatabaseName, 
+encryption_state_desc AS EncryptionState,
+key_algorithm+CAST(key_length AS nvarchar(128)) AS EncryptionAlgorithm,encryptor_type
+FROM sys.dm_database_encryption_keys</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255321</Property>
+    <Property Name="RuleId" Type="System.String">SV-255321r1018558_rule</Property>
+    <Property Name="Severity" Type="System.String">high</Property>
+    <Property Name="Code" Type="System.String">#$LogicalServerName = "myServer" 
+#$RGname = "myRG" 
+#$DBName = "myDatabase" 
+Get-AzSqlDatabaseTransparentDataEncryption -ServerName $LogicalServerName -ResourceGroupName $RGname -DatabaseName $DBname </Property>
+    <Property Name="Method" Type="System.Int32">0</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255322</Property>
+    <Property Name="RuleId" Type="System.String">SV-255322r1018559_rule</Property>
+    <Property Name="Severity" Type="System.String">high</Property>
+    <Property Name="Code" Type="System.String">#$LogicalServerName = "myServerName" 
+#$RGname = "myResourceGroup" 
+#$DBName = "myDatabaseName" 
+Get-AzSqlDatabaseTransparentDataEncryption -ServerName $LogicalServerName -ResourceGroupName $RGname -DatabaseName $DBname</Property>
+    <Property Name="Method" Type="System.Int32">0</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255323</Property>
+    <Property Name="RuleId" Type="System.String">SV-255323r961656_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">Review DBMS code (stored procedures, functions, triggers), application code, settings, column and field definitions, and constraints to determine whether the database is protected against invalid input. 
+
+If code exists that allows invalid data to be acted upon or input into the database, this is a finding. 
+
+If column/field definitions are not reflective of the data, this is a finding. 
+
+If columns/fields do not contain constraints and validity checking where required, this is a finding. 
+
+Where a column/field is noted in the system documentation as necessarily free-form, even though its name and context suggest that it should be strongly typed and constrained, the absence of these protections is not a finding. 
+
+Where a column/field is clearly identified by name, caption or context as Notes, Comments, Description, Text, etc., the absence of these protections is not a finding.</Property>
+    <Property Name="Method" Type="System.Int32">-1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255324</Property>
+    <Property Name="RuleId" Type="System.String">SV-255324r960879_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">#$ResourceGroup = "myResourceGroup"
+#$ServerName = "myServerName"
+Get-AzSqlServerAudit -ResourceGroupName $ResourceGroup -ServerName $ServerName `
+| Select-object -property BlobStorageTargetState,LogAnalyticsTargetState,EventHubTargetState</Property>
+    <Property Name="Method" Type="System.Int32">0</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255325</Property>
+    <Property Name="RuleId" Type="System.String">SV-255325r960882_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">Obtain the list of approved audit maintainers from the system documentation.
+
+If any role memberships are not documented and authorized, this is a finding.	
+
+Review the Azure roles and individual users, all of which enable the ability to create and maintain audits.
+
+To review the Azure roles and users, navigate to the Azure Portal and review the Azure Server controlling the Azure SQL Database.
+1. Select "Access Control (IAM)".
+2. Select "Role assignments" and review the roles assigned to each user.
+3. Select "Roles", and then select "View" under the Details column for each role.
+
+Any roles or users with Write permissions to the auditing policy must be documented.
+
+This may include but is not limited to the Owner, Contributor, and Administrator roles.
+
+If any of the roles or users have permissions that are not documented, or the documented audit maintainers do not have permissions, this is a finding.</Property>
+    <Property Name="Method" Type="System.Int32">2</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255326</Property>
+    <Property Name="RuleId" Type="System.String">SV-255326r960885_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255327</Property>
+    <Property Name="RuleId" Type="System.String">SV-255327r960885_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255328</Property>
+    <Property Name="RuleId" Type="System.String">SV-255328r960888_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT *
+   FROM sys.database_audit_specifications
+   where (name = 'SqlDbAuditing_ServerAuditSpec' 
+       or name = 'SqlDbAuditing_AuditSpec')
+   and is_state_enabled = 1</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255329</Property>
+    <Property Name="RuleId" Type="System.String">SV-255329r960909_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">If an Azure SQL Database Audit is not in use for audit purposes, this is a finding, unless a third-party product is being used that can perform detailed auditing for Azure SQL Database.
+
+Review system documentation to determine whether Azure SQL Database is required to audit any events and fields in addition to those in the standard audit.
+
+If there are none specified, this is not a finding.
+
+If Azure SQL Database Audit is in use, compare the audit specification(s) with the documented requirements.
+
+If any such requirement is not satisfied by the audit specification(s) (or by supplemental, locally-deployed mechanisms), this is a finding.</Property>
+    <Property Name="Method" Type="System.Int32">2</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255330</Property>
+    <Property Name="RuleId" Type="System.String">SV-255330r960930_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">$ResourceType = $(Get-AzResource -Name $StorageAcctName).ResourceType
+Get-AzRoleAssignment -ResourceGroupName $SARGname -ResourceName $StorageAcctName -ResourceType $resourceType | Convertto-Json</Property>
+    <Property Name="Method" Type="System.Int32">0</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255331</Property>
+    <Property Name="RuleId" Type="System.String">SV-255331r960933_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">$ResourceType = $(Get-AzResource -Name $StorageAcctName).ResourceType
+Get-AzRoleAssignment -ResourceGroupName $SARGname -ResourceName $StorageAcctName -ResourceType $resourceType | Convertto-Json</Property>
+    <Property Name="Method" Type="System.Int32">0</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255332</Property>
+    <Property Name="RuleId" Type="System.String">SV-255332r960936_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">$ResourceType = $(Get-AzResource -Name $StorageAcctName).ResourceType
+Get-AzRoleAssignment -ResourceGroupName $SARGname -ResourceName $StorageAcctName -ResourceType $resourceType</Property>
+    <Property Name="Method" Type="System.Int32">0</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255333</Property>
+    <Property Name="RuleId" Type="System.String">SV-255333r960963_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">Review vendor documentation and vendor websites to identify vendor-provided demonstration or sample databases, database applications, objects, and files. 
+
+Review the Azure SQL Database to determine if any of the demonstration and sample databases, database applications, or files are installed in the database or are included with the Azure SQL Database.
+
+If any are present in the database or are included with the Azure SQL Database, this is a finding.</Property>
+    <Property Name="Method" Type="System.Int32">2</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255334</Property>
+    <Property Name="RuleId" Type="System.String">SV-255334r960966_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">$(Get-AzSqlServer -ResourceGroupName $resourceGroupName -ServerName $serverName)</Property>
+    <Property Name="Method" Type="System.Int32">0</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255335</Property>
+    <Property Name="RuleId" Type="System.String">SV-255335r960969_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">Review Azure SQL Database users to determine whether shared accounts exist. (This does not include the case where Azure SQL Database has a guest or public account that is providing access to publicly available information.) 
+
+If accounts are determined to be shared, determine if individuals are first individually authenticated. Where an application connects to Azure SQL Database using a standard, shared account, ensure it also captures the individual user identification and passes it to Azure SQL Database. 
+
+If individuals are not individually authenticated before using the shared account (e.g., by the operating system or possibly by an application making calls to the database), this is a finding. 
+
+If accounts are determined to be shared, determine if they are directly accessible to end users. If so, this is a finding.</Property>
+    <Property Name="Method" Type="System.Int32">2</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255336</Property>
+    <Property Name="RuleId" Type="System.String">SV-255336r961044_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">#$LogicalServerName = "myServer" 
+Get-AzSqlServer -ServerName $LogicalServerName | Get-AzSqlServerActiveDirectoryOnlyAuthentication</Property>
+    <Property Name="Method" Type="System.Int32">0</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255337</Property>
+    <Property Name="RuleId" Type="System.String">SV-255337r961053_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">Review documentation, Azure SQL Database settings, and authentication system settings to determine if nonorganizational users are individually identified and authenticated when logging onto the system. 
+
+If accounts are determined to be shared, determine if individuals are first individually authenticated. Where an application connects to Azure SQL Database using a standard, shared account, ensure that it also captures the individual user identification and passes it to Azure SQL Database. 
+
+If the documentation indicates that this is a public-facing, read-only (from the point of view of public users) database that does not require individual authentication, this is not a finding. 
+
+If nonorganizational users are not uniquely identified and authenticated, this is a finding.</Property>
+    <Property Name="Method" Type="System.Int32">2</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255338</Property>
+    <Property Name="RuleId" Type="System.String">SV-255338r961095_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">#$LogicalServerName = "myServer"
+$ResourceScope = Get-AzResource -name $LogicalServerName | Where-Object {$_.ResourceType -eq "Microsoft.Sql/servers"} | Select-Object -ExpandProperty ResourceID
+Get-AzRoleAssignment | Where-Object {$_.Scope -eq $ResourceScope}</Property>
+    <Property Name="Method" Type="System.Int32">0</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255339</Property>
+    <Property Name="RuleId" Type="System.String">SV-255339r961128_rule</Property>
+    <Property Name="Severity" Type="System.String">high</Property>
+    <Property Name="Code" Type="System.String">#$LogicalServerName = "myServerName"
+#$RGname = "myRG"
+#$DBName = "myDatabaseName"
+Get-AzSqlDatabaseTransparentDataEncryption -ServerName $LogicalServerName -ResourceGroupName $RGname -DatabaseName $Dbname</Property>
+    <Property Name="Method" Type="System.Int32">0</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255340</Property>
+    <Property Name="RuleId" Type="System.String">SV-255340r961221_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT c.session_id,host_name,program_name,nt_domain, login_name, connect_time, last_request_end_time 
+FROM sys.dm_exec_sessions AS s
+JOIN sys.dm_exec_connections AS c ON s.session_id= c.session_id;</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255341</Property>
+    <Property Name="RuleId" Type="System.String">SV-255341r961353_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">#$AzureSqlDbName = '&lt;Azure SQL Database Name&gt;'
+$AzureSqlDbResourceID = Get-AzResource -Name $AzureSqlDbName
+Get-AzRoleAssignment -Scope $AzureSqlDbResourceID.ResourceId -IncludeClassicAdministrators | Format-Table DisplayName,RoleDefinitionName </Property>
+    <Property Name="Method" Type="System.Int32">0</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255343</Property>
+    <Property Name="RuleId" Type="System.String">SV-255343r961392_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">$FormatEnumerationLimit=-1
+Get-AzSqlServerAudit -ResourceGroupName $ResourceGroup -ServerName $ServerName | Format-List -Property ServerName, *TargetState</Property>
+    <Property Name="Method" Type="System.Int32">0</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255344</Property>
+    <Property Name="RuleId" Type="System.String">SV-255344r961398_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">
+    $storageAcct = Get-AzStorageAccount -ResourceGroupName $SARGname -Name $StorageAcctName
+$metric = Get-AzMetricAlertRuleV2 | Where-Object TargetResourceId -eq $storageAcct.Id
+$metric.Criteria</Property>
+    <Property Name="Method" Type="System.Int32">0</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255345</Property>
+    <Property Name="RuleId" Type="System.String">SV-255345r1018607_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">  SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255346</Property>
+    <Property Name="RuleId" Type="System.String">SV-255346r961470_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">Get-AzSqlServerFirewallRule -ServerName $ServerName -ResourceGroupName $ResourceGroup</Property>
+    <Property Name="Method" Type="System.Int32">0</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255347</Property>
+    <Property Name="RuleId" Type="System.String">SV-255347r961470_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">Get-AzSqlServerFirewallRule -ServerName $ServerName -ResourceGroupName $ResourceGroup</Property>
+    <Property Name="Method" Type="System.Int32">0</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255348</Property>
+    <Property Name="RuleId" Type="System.String">SV-255348r961638_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">#$ResourceGroupName = '&lt;Resource Group Name&gt;'
+Get-AzSqlServer -ResourceGroupName $ResourceGroupName | Format-Table ServerName,MinimalTlsVersion</Property>
+    <Property Name="Method" Type="System.Int32">0</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255349</Property>
+    <Property Name="RuleId" Type="System.String">SV-255349r961641_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">#$ResourceGroupName = '&lt;Resource Group Name&gt;'
+Get-AzSqlServer -ResourceGroupName $ResourceGroupName | Format-Table ServerName,MinimalTlsVersion</Property>
+    <Property Name="Method" Type="System.Int32">0</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255350</Property>
+    <Property Name="RuleId" Type="System.String">SV-255350r961791_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255351</Property>
+    <Property Name="RuleId" Type="System.String">SV-255351r961791_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255352</Property>
+    <Property Name="RuleId" Type="System.String">SV-255352r961797_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255353</Property>
+    <Property Name="RuleId" Type="System.String">SV-255353r961797_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255354</Property>
+    <Property Name="RuleId" Type="System.String">SV-255354r961800_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255355</Property>
+    <Property Name="RuleId" Type="System.String">SV-255355r961800_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255356</Property>
+    <Property Name="RuleId" Type="System.String">SV-255356r961800_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255357</Property>
+    <Property Name="RuleId" Type="System.String">SV-255357r961800_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255358</Property>
+    <Property Name="RuleId" Type="System.String">SV-255358r961803_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255359</Property>
+    <Property Name="RuleId" Type="System.String">SV-255359r961803_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255360</Property>
+    <Property Name="RuleId" Type="System.String">SV-255360r961809_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255361</Property>
+    <Property Name="RuleId" Type="System.String">SV-255361r961809_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255362</Property>
+    <Property Name="RuleId" Type="System.String">SV-255362r961812_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255363</Property>
+    <Property Name="RuleId" Type="System.String">SV-255363r961812_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name
+</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255364</Property>
+    <Property Name="RuleId" Type="System.String">SV-255364r961818_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255365</Property>
+    <Property Name="RuleId" Type="System.String">SV-255365r961818_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255366</Property>
+    <Property Name="RuleId" Type="System.String">SV-255366r961821_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255367</Property>
+    <Property Name="RuleId" Type="System.String">SV-255367r961821_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255368</Property>
+    <Property Name="RuleId" Type="System.String">SV-255368r961824_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255369</Property>
+    <Property Name="RuleId" Type="System.String">SV-255369r961824_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255370</Property>
+    <Property Name="RuleId" Type="System.String">SV-255370r961827_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255371</Property>
+    <Property Name="RuleId" Type="System.String">SV-255371r961827_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255372</Property>
+    <Property Name="RuleId" Type="System.String">SV-255372r961830_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT distinct audit_action_name
+   FROM sys.database_audit_specification_details 
+   ORDER BY audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255373</Property>
+    <Property Name="RuleId" Type="System.String">SV-255373r961833_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255374</Property>
+    <Property Name="RuleId" Type="System.String">SV-255374r961836_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255375</Property>
+    <Property Name="RuleId" Type="System.String">SV-255375r961836_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">SELECT DISTINCT sd.audit_action_name 
+  FROM sys.database_audit_specification_details sd
+  JOIN sys.database_audit_specifications s 
+  ON s.database_specification_id = sd.database_specification_id
+  WHERE (name = 'SqlDbAuditing_ServerAuditSpec' /*Server Audit*/
+      OR name = 'SqlDbAuditing_AuditSpec') /*Database Audit*/
+  AND s.is_state_enabled = 1
+  ORDER BY sd.audit_action_name</Property>
+    <Property Name="Method" Type="System.Int32">1</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255376</Property>
+    <Property Name="RuleId" Type="System.String">SV-255376r961839_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">#$ResourceGroup = "myResourceGroup"
+#$ServerName = "myServerName"
+$FormatEnumerationLimit=-1
+Get-AzSqlServerAudit -ResourceGroupName $ResourceGroup -ServerName $ServerName</Property>
+    <Property Name="Method" Type="System.Int32">0</Property>
+  </Object>
+  <Object Type="Stig">
+    <Property Name="Id" Type="System.String">V-255377</Property>
+    <Property Name="RuleId" Type="System.String">SV-255377r961860_rule</Property>
+    <Property Name="Severity" Type="System.String">medium</Property>
+    <Property Name="Code" Type="System.String">Get-AzRmStorageContainerImmutabilityPolicy -ResourceGroupName $SARGname -AccountName $StorageAcctName -ContainerName "sqldbauditlogs"</Property>
+    <Property Name="Method" Type="System.Int32">0</Property>
+  </Object>
+</Objects>

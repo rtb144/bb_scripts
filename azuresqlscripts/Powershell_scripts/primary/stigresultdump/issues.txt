@@ -1,0 +1,375 @@
+Legend:
+title                           || Context
+``` needs isso/issm review ```  || Discuss whether if we have a solution for this. 
+``` results in comments ```     || the output or details will be in the comment section.
+``` stig automated check ```    || Script is able to provide output from the system. This will generate either "O" or "NF". "NF" is if they meet a criteria, otherwise it will be "O"
+``` Policy Based ```            || Documentation support needed to review 
+``` stig manual check ```       || Needs user to read the result and determine if there is/isnt a finding
+
+
+
+##########################################################################################################################################################################
+###################################################        CAT 1          ################################################################################################
+##########################################################################################################################################################################
+#########################################################
+SV-255301r960768_rule
+``` stig automated check ```
+``` results in comments ```
+``` Policy Based ```
+If the returned value in the "AzureADOnlyAuthentication" column is "True", this is not a finding.
+Note: A few database do not have this enabled. Will utilized documentation
+
+#########################################################
+SV-255302r960792_rule
+``` needs isso/issm review ```
+``` results in comments ```
+Review the permissions actually in place in the database. 
+If the actual permissions do not match the documented requirements, this is a finding.
+
+#########################################################
+SV-255303r960792_rule
+``` needs isso/issm review ```
+``` results in comments ```
+Review the permissions actually in place in the database. 
+If the actual permissions do not match the documented requirements, this is a finding.
+
+
+#########################################################
+SV-255320r962034_rule
+``` stig automated check ```
+``` results in comments ```
+If any of the information defined as requiring cryptographic protection from modification is not encrypted in a manner that provides the required level of protection, this is a finding
+
+#########################################################
+SV-255321r1018558_rule
+SV-255322r1018559_rule
+SV-255339r961128_rule
+``` stig automated check ```
+``` results in comments ```
+Ensure Encryption is enabled
+NOTE: Master DB cannot be encrypted because it contains system objects. (Source: https://learn.microsoft.com/en-us/azure/azure-sql/database/transparent-data-encryption-tde-overview?view=azuresql&tabs=azure-portal)
+
+
+
+
+
+##########################################################################################################################################################################
+###################################################        CAT 2          ################################################################################################
+##########################################################################################################################################################################
+
+
+
+
+
+
+# NOT REVIEWED IN scripts
+
+#########################################################
+SV-255308r961131_rule
+``` needs isso/issm review ```
+``` Policy Based ```
+``` stig manual check ```
+Determine elements of security functionality (lists of permissions, additional authentication information, stored procedures, application specific auditing, etc.) being housed inside Azure SQL Database.
+For any elements found, check Azure SQL Database to determine if these objects or code implementing security functionality are located in a separate security domain, such as a separate database, schema, or table created specifically for security functionality.
+Review the database structure to determine where security related functionality is stored. If security-related database objects or code are not kept separate, this is a finding.
+
+#########################################################
+SV-255309r961149_rule
+``` needs isso/issm review ```
+``` stig manual check ```
+Review the procedures for the refreshing of development/test data from production.
+Review any scripts or code that exists for the movement of production data to development/test systems, or to any other location or for any other purpose. Verify that copies of production data are not left in unprotected locations.
+If the code that exists for data movement does not comply with the organization-defined data transfer policy and/or fails to remove any copies of production data from unprotected locations, this is a finding.
+
+#########################################################
+SV-255310r961158_rule
+SV-255323r961656_rule
+``` needs isso/issm review ```
+``` stig manual check ```
+Review Azure SQL Database code (stored procedures, functions, triggers), application code, settings, column and field definitions, and constraints to determine whether the database is protected against invalid input. 
+If code exists that allows invalid data to be acted upon or input into the database, this is a finding. 
+If column/field definitions are not reflective of the data, this is a finding. 
+If columns/fields do not contain constraints and validity checking where required, this is a finding. 
+
+
+
+
+
+
+
+
+
+
+
+# Normals
+
+#########################################################
+SV-255304r960864_rule
+SV-255335r960969_rule
+SV-255337r961053_rule
+``` needs isso/issm review ```
+``` stig automated check ```
+``` results in comments ```
+No shared accounts. Users are required to have CAR and sign on via Entra
+
+#########################################################
+SV-255305r960864_rule
+``` needs isso/issm review ```
+``` stig automated check ```
+``` None of the data base have this. ```
+``` results in comments ```
+>>> Check the server documentation to determine if collecting and keeping historical versions of a table is required.
+
+Find all of the temporal tables in the database using the following query:
+If any tables listed in the documentation are not in the list created by running the above statement, this is a finding.
+Locate the line that contains "SYSTEM_VERSIONING".
+Locate the text that states "HISTORY_RETENTION_PERIOD".
+If this text is missing, or is set to a value less than the documented history retention period, this is a finding.
+
+
+#########################################################
+SV-255306r960960_rule
+``` needs isso/issm review ```
+``` stig automated check ```
+``` results in comments ``
+If the Azure SQL Database ownership list does not exist or needs to be updated, this is a finding. 
+
+#########################################################
+SV-255307r960960_rule
+``` needs isso/issm review ```
+``` stig automated check ```
+``` results in comments ``
+Obtain a listing of users and roles who are authorized to modify database structure and logic modules from the server documentation.
+If unauthorized access to the principal(s)/role(s) has been granted, this is a finding.
+
+
+
+
+
+
+#########################################################
+SV-255311r961158_rule
+``` stig automated check ```
+``` results in comments ``
+
+#########################################################
+SV-255312r961158_rule
+``` stig automated check ```
+``` results in comments ``
+
+#########################################################
+SV-255313r961269_rule
+SV-255314r961272_rule
+SV-255315r961275_rule
+``` needs isso/issm review ```
+If security labeling is not required, this is not a finding.
+If security labeling requirements have been specified, but a third-party solution, SQL Information Protection, or an Azure SQL Database Row-Level security solution is implemented that reliably maintains labels on information in storage, this is a finding.
+
+
+
+#########################################################
+SV-255316r961317_rule
+``` needs isso/issm review ```
+``` stig automated check ```
+``` results in comments ``
+Review the security configuration of the database. If applicable, review the security configuration of the application(s) using the database.
+If the DAC defined in the documentation is not implemented in the security configuration, this is a finding.
+
+#########################################################
+SV-255317r961359_rule
+``` needs isso/issm review ```
+``` stig automated check ```
+``` results in comments ```
+If any procedures or functions are returned that are not documented, this is a finding.
+
+
+#########################################################
+SV-255318r1018606_rule
+``` stig automated check ```
+``` results in comments ```
+
+#########################################################
+SV-255319r961461_rule
+``` needs isso/issm review ```
+``` stig automated check ```
+``` results in comments ```
+Check the documentation to verify the logins and roles returned are authorized. If the logins and/or roles are not documented and authorized, this is a finding.
+
+Note: Master Db needs to check again
+
+
+#########################################################
+SV-255324r960879_rule
+``` stig automated check ```
+``` results in comments ```
+If BlobStorageTargetState, LogAnalyticsTargetState and EventHubTargetState (all three) are Disabled, this is a finding.
+
+#########################################################
+SV-255325r960882_rule
+``` stig automated check ```
+``` results in comments ```
+Auditing is done through a managed instance governed by azure entra with role permission.
+
+#########################################################
+SV-255326r960885_rule
+SV-255327r960885_rule
+SV-255345r1018607_rule
+SV-255350r961791_rule
+SV-255351r961791_rule
+SV-255352r961797_rule
+SV-255353r961797_rule
+SV-255354r961800_rule
+SV-255355r961800_rule
+SV-255356r961800_rule
+SV-255357r961800_rule
+SV-255358r961803_rule
+SV-255359r961803_rule
+SV-255360r961809_rule
+SV-255361r961809_rule
+SV-255362r961812_rule
+SV-255363r961812_rule
+SV-255364r961818_rule
+SV-255365r961818_rule
+SV-255366r961821_rule
+SV-255367r961821_rule
+SV-255368r961824_rule
+SV-255369r961824_rule
+SV-255370r961827_rule
+SV-255371r961827_rule
+SV-255372r961830_rule
+SV-255373r961833_rule
+SV-255374r961836_rule
+SV-255375r961836_rule
+``` stig automated check ```
+``` results in comments ```
+``` remediation needed ```
+Deploy an audit to review the retrieval of privilege/permission/role membership information. 
+Refer to the supplemental file "AzureSQLDatabaseAudit.txt" PowerShell script.
+
+
+#########################################################
+SV-255328r960888_rule
+``` stig automated check ```
+``` results in comments ```
+
+#########################################################
+SV-255329r960909_rule
+``` stig automated check ```
+``` results in comments ```
+Audit logs are stored in third party (log analytics and blob storage)
+
+
+#########################################################
+SV-255330r960930_rule (read)
+SV-255331r960933_rule (write)
+SV-255332r960936_rule (access)
+``` needs isso/issm review ```
+``` stig automated check ```
+``` results in comments ```
+$ResourceType = $(Get-AzResource -Name $StorageAcctName).ResourceType
+Get-AzRoleAssignment -ResourceGroupName $SARGname -ResourceName $StorageAcctName -ResourceType $resourceType
+
+
+#########################################################
+SV-255333r960963_rule
+``` stig automated check ```
+``` results in comments ```
+Review vendor documentation and vendor websites to identify vendor-provided demonstration or sample databases, database applications, objects, and files. 
+Review the Azure SQL Database to determine if any of the demonstration and sample databases, database applications, or files are installed in the database or are included with the Azure SQL Database.
+
+#########################################################
+SV-255334r960966_rule
+``` this is a finding ```
+``` needs isso/issm review ```
+``` stig automated check ```
+``` results in comments ```
+Azure SQL Database must only use approved firewall settings, including disabling public network access. This value is allowed by default in Azure SQL Database and must be disabled if not otherwise documented and approved.
+Obtain a list of all approved firewall settings from the database documentation. 
+$(Get-AzSqlServer -ResourceGroupName $resourceGroupName -ServerName $serverName)
+Note: Need infrastructure input
+
+
+#########################################################
+SV-255336r961044_rule
+``` stig automated check ```
+``` results in comments ```
+If AzureADOnlyAuthentication returns False, this is a finding.
+
+#########################################################
+SV-255338r961095_rule
+``` stig manual check ```
+``` results in comments ```
+If a user not assigned information system management responsibilities has membership in any of the following roles, this is a finding:
+
+
+#########################################################
+SV-255340r961221_rule
+``` needs isso/issm review ```
+``` stig manual check ```
+``` results in comments ```
+Review system documentation to obtain the organization's definition of circumstances requiring automatic session termination. If the documentation explicitly states that such termination is not required or is prohibited, this is not a finding.
+If the system owner, data owner, or organization requires additional assurance, this is a finding.
+
+
+#########################################################
+SV-255341r961353_rule
+``` stig manual check ```
+``` results in comments ``
+#$AzureSqlDbName = '&lt;Azure SQL Database Name&gt;'
+$AzureSqlDbResourceID = Get-AzResource -Name $AzureSqlDbName
+Get-AzRoleAssignment -Scope $AzureSqlDbResourceID.ResourceId -IncludeClassicAdministrators | Format-Table DisplayName,RoleDefinitionName 
+*** Ensure that there are required permission
+Note: Master DB needs to check again
+
+#########################################################
+SV-255343r961392_rule
+``` stig automated check ```
+``` results in comments ``
+
+#########################################################
+SV-255344r961398_rule
+``` finding ```
+``` stig automated check ```
+``` results in comments ```
+If no alert exists, this is a finding.
+If the criteria does not match 75 percent or less than the maximum capacity of 5 TiB, this is a finding.
+
+Go to the Azure portal: Access your Azure subscription through the portal. 
+Navigate to your storage account: Select the specific storage account you want to monitor. 
+Access monitoring settings: Go to the "Monitoring" section of the storage account settings. 
+Create an alert rule: Initiate the process to create a new alert rule. 
+Configure the alert condition: Set the condition to trigger when the "Storage Capacity Usage" metric reaches 75%. 
+Specify notification details: Choose the recipients and notification method (email, SMS, etc.). 
+
+
+
+
+#########################################################
+SV-255346r961470_rule
+SV-255347r961470_rule
+``` Finding ``` 
+``` needs isso/issm review ```
+``` stig automated check ```
+``` results in comments ``
+Verify that the public network access option is set to disabled.
+If the value is enabled and not in use and specifically approved in the database documentation, this is a finding.
+$(Get-AzSqlServer -ResourceGroupName $resourceGroupName -ServerName $serverName)
+
+#########################################################
+SV-255348r961638_rule
+SV-255349r961641_rule
+``` stig automated check ```
+``` results in comments ```
+TLS 1.2
+
+#########################################################
+SV-255376r961839_rule
+``` stig automated check ```
+``` results in comments ```
+Ensure predicateexpression
+
+#########################################################
+SV-255377r961860_rule
+``` stig automated check ```
+``` results in comments ```
+Verify that an Immutable Blob Storage policy has been added to the audit container. If Azure audit logs are written to only one storage system or immutable storage is not enabled, this is a finding.
